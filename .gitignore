@@ -1,3 +1,8 @@
 node_modules/
 data/troskovnik.md
+data/*.md
 .DS_Store
+
+# Personal/project folders
+resources/
+backlog/
