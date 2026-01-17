@@ -1,0 +1,16 @@
+{
+  "name": "troskovnik",
+  "version": "1.0.0",
+  "description": "Aplikacija za praćenje mesečnih troškova",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["troškovi", "budžet", "finansije"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
