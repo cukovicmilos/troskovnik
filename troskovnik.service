@@ -1,0 +1,17 @@
+[Unit]
+Description=Troskovnik - Monthly Expense Tracker
+After=network.target
+
+[Service]
+Type=simple
+User=chule
+WorkingDirectory=/var/www/html/troskovnik
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node /var/www/html/troskovnik/server.js
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/troskovnik.log
+StandardError=append:/var/log/troskovnik-error.log
+
+[Install]
+WantedBy=multi-user.target

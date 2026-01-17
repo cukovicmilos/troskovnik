@@ -19,6 +19,12 @@ const ChartManager = {
         const ctx = document.getElementById(canvasId);
         if (!ctx) return null;
 
+        // Destroy existing chart if any
+        if (this.chart) {
+            this.chart.destroy();
+            this.chart = null;
+        }
+
         const data = this.prepareData(kategorije, getCategoryTotal);
 
         this.chart = new Chart(ctx, {

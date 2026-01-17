@@ -2,6 +2,7 @@ node_modules/
 data/troskovnik.md
 data/*.md
 .DS_Store
+.htpasswd
 
 # Personal/project folders
 resources/

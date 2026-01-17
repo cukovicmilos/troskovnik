@@ -79,7 +79,7 @@ function troskovnikApp() {
 
         async loadData() {
             try {
-                const response = await fetch('/api/data');
+                const response = await fetch('api/data');
                 if (!response.ok) throw new Error('Failed to load data');
                 const mdContent = await response.text();
                 this.parseMarkdown(mdContent);
@@ -91,7 +91,7 @@ function troskovnikApp() {
         async saveData() {
             try {
                 const mdContent = this.toMarkdown();
-                const response = await fetch('/api/data', {
+                const response = await fetch('api/data', {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain' },
                     body: mdContent
@@ -238,9 +238,12 @@ function troskovnikApp() {
         },
 
         // Item modal methods
+        editingItemIndex: -1,
+
         openAddItemModal(kategorija) {
             this.selectedKategorija = kategorija;
             this.editingItem = null;
+            this.editingItemIndex = -1;
             this.itemForm = { naziv: '', iznos: 0, napomena: '', kategorijaKey: '' };
             this.showItemModal = true;
         },
@@ -249,6 +252,11 @@ function troskovnikApp() {
             this.selectedKategorija = kategorija;
             this.editingItem = stavka;
             const kategorijaKey = `${kategorija.emoji} ${kategorija.naziv}`;
+            // Find the actual index in the original (unsorted) array
+            const originalStavke = this.troskovi[kategorijaKey] || [];
+            this.editingItemIndex = originalStavke.findIndex(s =>
+                s.naziv === stavka.naziv && s.iznos === stavka.iznos && s.napomena === stavka.napomena
+            );
             this.itemForm = { ...stavka, kategorijaKey };
             this.showItemModal = true;
         },
@@ -273,27 +281,24 @@ function troskovnikApp() {
                 napomena: this.itemForm.napomena
             };
 
-            if (this.editingItem) {
-                // Update existing
-                const index = this.troskovi[originalKey].findIndex(s => s.naziv === this.editingItem.naziv);
-                if (index !== -1) {
-                    const oldIznos = this.troskovi[originalKey][index].iznos;
+            if (this.editingItem && this.editingItemIndex !== -1) {
+                // Update existing using stored index
+                const oldIznos = this.troskovi[originalKey][this.editingItemIndex].iznos;
 
-                    // Check if category changed
-                    if (newKey !== originalKey) {
-                        // Remove from old category
-                        this.troskovi[originalKey].splice(index, 1);
-                        // Add to new category
-                        if (!this.troskovi[newKey]) {
-                            this.troskovi[newKey] = [];
-                        }
-                        this.troskovi[newKey].push(itemData);
-                        this.addLog(`${timestamp} | Premešteno: ${itemData.naziv} iz ${originalKey} u ${newKey}`);
-                    } else {
-                        // Same category, just update
-                        this.troskovi[originalKey][index] = itemData;
-                        this.addLog(`${timestamp} | Izmenjeno: ${itemData.naziv} ${oldIznos} -> ${itemData.iznos} RSD`);
+                // Check if category changed
+                if (newKey !== originalKey) {
+                    // Remove from old category
+                    this.troskovi[originalKey].splice(this.editingItemIndex, 1);
+                    // Add to new category
+                    if (!this.troskovi[newKey]) {
+                        this.troskovi[newKey] = [];
                     }
+                    this.troskovi[newKey].push(itemData);
+                    this.addLog(`${timestamp} | Premešteno: ${itemData.naziv} iz ${originalKey} u ${newKey}`);
+                } else {
+                    // Same category, just update
+                    this.troskovi[originalKey][this.editingItemIndex] = itemData;
+                    this.addLog(`${timestamp} | Izmenjeno: ${itemData.naziv} ${oldIznos} -> ${itemData.iznos} RSD`);
                 }
             } else {
                 // Add new
@@ -312,7 +317,10 @@ function troskovnikApp() {
             if (!confirm(`Da li ste sigurni da želite da obrišete "${stavka.naziv}"?`)) return;
 
             const key = `${kategorija.emoji} ${kategorija.naziv}`;
-            const index = this.troskovi[key].findIndex(s => s.naziv === stavka.naziv);
+            // Find by all properties to handle duplicates
+            const index = this.troskovi[key].findIndex(s =>
+                s.naziv === stavka.naziv && s.iznos === stavka.iznos && s.napomena === stavka.napomena
+            );
             if (index !== -1) {
                 this.troskovi[key].splice(index, 1);
                 const now = new Date();

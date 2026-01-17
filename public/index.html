@@ -25,7 +25,8 @@
         }
     </script>
 
-    <!-- Alpine.js -->
+    <!-- Alpine.js + Collapse plugin -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <!-- Chart.js -->
@@ -35,7 +36,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 
     <!-- Custom styles -->
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
 
@@ -119,7 +120,7 @@
 
                                 <!-- Items list -->
                                 <ul class="space-y-2">
-                                    <template x-for="stavka in getStavkeZaKategoriju(kategorija)" :key="stavka.naziv">
+                                    <template x-for="(stavka, index) in getStavkeZaKategoriju(kategorija)" :key="kategorija.naziv + '-' + index">
                                         <li class="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg group">
                                             <div class="flex items-center gap-2">
                                                 <span x-text="stavka.naziv" class="font-medium"></span>
@@ -368,8 +369,8 @@
     </div>
 
     <!-- Chart JS -->
-    <script src="/js/chart.js"></script>
+    <script src="js/chart.js"></script>
     <!-- App JS -->
-    <script src="/js/app.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
