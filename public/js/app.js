@@ -20,7 +20,9 @@ function troskovnikApp() {
         itemForm: {
             naziv: '',
             iznos: 0,
-            napomena: ''
+            napomena: '',
+            endDate: '',
+            contractEndDate: ''
         },
         newCategory: {
             emoji: '',
@@ -42,6 +44,106 @@ function troskovnikApp() {
 
         get darkMode() {
             return this.tema === 'dark';
+        },
+
+        // Get expenses that have an end date, grouped by month
+        get expiringExpenses() {
+            const expiring = [];
+            const now = new Date();
+
+            for (const kat of this.kategorije) {
+                const key = `${kat.emoji} ${kat.naziv}`;
+                const stavke = this.troskovi[key] || [];
+                for (const stavka of stavke) {
+                    if (stavka.endDate) {
+                        // Parse YYYY-MM format
+                        const [year, month] = stavka.endDate.split('-').map(Number);
+                        if (year && month) {
+                            const endDate = new Date(year, month - 1); // month is 0-indexed
+                            // Only include future or current month
+                            if (endDate >= new Date(now.getFullYear(), now.getMonth())) {
+                                expiring.push({
+                                    naziv: stavka.naziv,
+                                    iznos: stavka.iznos,
+                                    endDate: stavka.endDate,
+                                    kategorija: key,
+                                    dateObj: endDate
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Sort by end date
+            expiring.sort((a, b) => a.dateObj - b.dateObj);
+            return expiring;
+        },
+
+        // Group expiring expenses by month
+        get expiringByMonth() {
+            const grouped = {};
+            for (const item of this.expiringExpenses) {
+                const monthKey = item.endDate;
+                if (!grouped[monthKey]) {
+                    grouped[monthKey] = {
+                        items: [],
+                        total: 0,
+                        dateObj: item.dateObj
+                    };
+                }
+                grouped[monthKey].items.push(item);
+                grouped[monthKey].total += item.iznos;
+            }
+            return grouped;
+        },
+
+        formatMonthYear(dateStr) {
+            if (!dateStr) return '';
+            const [year, month] = dateStr.split('-').map(Number);
+            const months = ['Januar', 'Februar', 'Mart', 'April', 'Maj', 'Jun', 'Jul', 'Avgust', 'Septembar', 'Oktobar', 'Novembar', 'Decembar'];
+            return `${months[month - 1]} ${year}`;
+        },
+
+        // Check if contract is expiring (current month or 1 month before)
+        isContractExpiring(stavka) {
+            if (!stavka.contractEndDate) return false;
+
+            const [year, month] = stavka.contractEndDate.split('-').map(Number);
+            if (!year || !month) return false;
+
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth() + 1; // 1-indexed
+
+            // Calculate months difference
+            const contractMonths = year * 12 + month;
+            const currentMonths = currentYear * 12 + currentMonth;
+            const diff = contractMonths - currentMonths;
+
+            // Expiring if within 1 month (0 = this month, 1 = next month)
+            return diff >= 0 && diff <= 1;
+        },
+
+        // Get contract warning message
+        getContractWarning(stavka) {
+            if (!stavka.contractEndDate) return '';
+
+            const [year, month] = stavka.contractEndDate.split('-').map(Number);
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth() + 1;
+
+            const contractMonths = year * 12 + month;
+            const currentMonths = currentYear * 12 + currentMonth;
+            const diff = contractMonths - currentMonths;
+
+            if (diff === 0) {
+                return 'Ugovor ističe ovog meseca!';
+            } else if (diff === 1) {
+                return 'Ugovor ističe sledećeg meseca!';
+            }
+            return '';
         },
 
         // Methods
@@ -171,7 +273,9 @@ function troskovnikApp() {
                         const stavka = {
                             naziv: parts[0],
                             iznos: parseInt(parts[1]) || 0,
-                            napomena: parts[2] || ''
+                            napomena: parts[2] || '',
+                            endDate: parts[3] || '',
+                            contractEndDate: parts[4] || ''
                         };
                         if (!this.troskovi[currentCategory]) {
                             this.troskovi[currentCategory] = [];
@@ -211,7 +315,14 @@ function troskovnikApp() {
                 md += `### ${key}\n`;
                 const stavke = this.troskovi[key] || [];
                 for (const stavka of stavke) {
-                    md += `- ${stavka.naziv} | ${stavka.iznos} | ${stavka.napomena || ''}\n`;
+                    let line = `- ${stavka.naziv} | ${stavka.iznos} | ${stavka.napomena || ''}`;
+                    if (stavka.endDate || stavka.contractEndDate) {
+                        line += ` | ${stavka.endDate || ''}`;
+                        if (stavka.contractEndDate) {
+                            line += ` | ${stavka.contractEndDate}`;
+                        }
+                    }
+                    md += line + '\n';
                 }
                 md += '\n';
             }
@@ -244,7 +355,7 @@ function troskovnikApp() {
             this.selectedKategorija = kategorija;
             this.editingItem = null;
             this.editingItemIndex = -1;
-            this.itemForm = { naziv: '', iznos: 0, napomena: '', kategorijaKey: '' };
+            this.itemForm = { naziv: '', iznos: 0, napomena: '', endDate: '', contractEndDate: '', kategorijaKey: '' };
             this.showItemModal = true;
         },
 
@@ -255,7 +366,7 @@ function troskovnikApp() {
             // Find the actual index in the original (unsorted) array
             const originalStavke = this.troskovi[kategorijaKey] || [];
             this.editingItemIndex = originalStavke.findIndex(s =>
-                s.naziv === stavka.naziv && s.iznos === stavka.iznos && s.napomena === stavka.napomena
+                s.naziv === stavka.naziv && s.iznos === stavka.iznos && s.napomena === stavka.napomena && s.endDate === stavka.endDate && s.contractEndDate === stavka.contractEndDate
             );
             this.itemForm = { ...stavka, kategorijaKey };
             this.showItemModal = true;
@@ -278,7 +389,9 @@ function troskovnikApp() {
             const itemData = {
                 naziv: this.itemForm.naziv,
                 iznos: this.itemForm.iznos,
-                napomena: this.itemForm.napomena
+                napomena: this.itemForm.napomena,
+                endDate: this.itemForm.endDate || '',
+                contractEndDate: this.itemForm.contractEndDate || ''
             };
 
             if (this.editingItem && this.editingItemIndex !== -1) {
@@ -319,7 +432,7 @@ function troskovnikApp() {
             const key = `${kategorija.emoji} ${kategorija.naziv}`;
             // Find by all properties to handle duplicates
             const index = this.troskovi[key].findIndex(s =>
-                s.naziv === stavka.naziv && s.iznos === stavka.iznos && s.napomena === stavka.napomena
+                s.naziv === stavka.naziv && s.iznos === stavka.iznos && s.napomena === stavka.napomena && s.endDate === stavka.endDate && s.contractEndDate === stavka.contractEndDate
             );
             if (index !== -1) {
                 this.troskovi[key].splice(index, 1);
