@@ -1,35 +1,15 @@
 <!DOCTYPE html>
-<html lang="sr" x-data="{ darkMode: localStorage.getItem('theme') === 'dark' }" :class="{ 'dark': darkMode }">
+<html lang="sr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Troškovnik</title>
+    <title>Troskovnik</title>
 
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        primary: {
-                            50: '#eff6ff',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
 
     <!-- Alpine.js + Collapse plugin -->
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
@@ -44,424 +24,385 @@
     <!-- Custom styles -->
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+<body>
+    <div x-data="troskovnikApp()" x-init="init()" class="cockpit-container">
 
-    <div x-data="troskovnikApp()" x-init="init()" class="min-h-screen flex flex-col">
+        <!-- Status Bar (Top) -->
+        <div class="status-bar">
+            <div class="status-bar-left">
+                <div class="status-item">
+                    <span class="status-label">Prihod</span>
+                    <span class="status-value profit" x-text="formatCurrency(plata)"></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Rashod</span>
+                    <span class="status-value loss" x-text="formatCurrency(ukupniRashodi)"></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Balans</span>
+                    <span class="status-value" :class="ostajeZaZivot >= 0 ? 'profit' : 'loss'" x-text="formatCurrency(ostajeZaZivot)"></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">%</span>
+                    <span class="status-value" :class="savingsPercent >= 20 ? 'profit' : savingsPercent >= 10 ? 'warning' : 'loss'" x-text="savingsPercent.toFixed(1) + '%'"></span>
+                </div>
+            </div>
+            <div class="status-bar-right">
+                <div class="status-item">
+                    <span class="status-label">Kategorija</span>
+                    <span class="status-value" x-text="kategorije.length"></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Stavki</span>
+                    <span class="status-value" x-text="totalItems"></span>
+                </div>
+            </div>
+        </div>
 
         <!-- Header -->
-        <header class="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-50">
-            <div class="container mx-auto px-4 py-4">
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                    <!-- Logo -->
-                    <h1 class="text-2xl font-bold text-primary-600 dark:text-primary-400 flex items-center gap-2">
-                        <i class="ti ti-wallet"></i>
-                        Troškovnik
-                    </h1>
+        <header class="cockpit-header">
+            <div class="cockpit-logo">
+                <i class="ti ti-wallet"></i>
+                <span>TROSKOVNIK</span>
+            </div>
 
-                    <!-- Plata input -->
-                    <div class="flex items-center gap-2 order-3 sm:order-2 w-full sm:w-auto">
-                        <label for="plata" class="text-sm font-medium whitespace-nowrap">
-                            <i class="ti ti-cash"></i> Plata:
-                        </label>
-                        <input
-                            type="number"
-                            id="plata"
-                            x-model.number="plata"
-                            @change="saveData()"
-                            class="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                            placeholder="0"
-                        >
-                        <span class="text-sm text-gray-500 dark:text-gray-400">RSD</span>
-                    </div>
-
-                    <!-- Theme toggle -->
-                    <button
-                        @click="toggleTheme()"
-                        class="order-2 sm:order-3 p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                        :title="darkMode ? 'Prebaci na svetlu temu' : 'Prebaci na tamnu temu'"
+            <div class="header-controls">
+                <div class="header-input-group">
+                    <label>Plata</label>
+                    <input
+                        type="number"
+                        x-model.number="plata"
+                        @change="saveData()"
+                        placeholder="0"
                     >
-                        <i class="ti text-xl" :class="darkMode ? 'ti-sun' : 'ti-moon'"></i>
-                    </button>
+                    <span class="currency">RSD</span>
                 </div>
+
+                <button @click="openCategoryModal()" class="icon-btn" title="Kategorije">
+                    <i class="ti ti-settings"></i>
+                </button>
             </div>
         </header>
 
-        <!-- Main content -->
-        <main class="flex-1 container mx-auto px-4 py-6">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                <!-- Left side: Categories -->
-                <div class="lg:col-span-2 space-y-4">
-                    <div class="flex items-center justify-between">
-                        <h2 class="text-xl font-semibold flex items-center gap-2">
-                            <i class="ti ti-category"></i>
-                            Kategorije
-                        </h2>
-                        <button
-                            @click="openCategoryModal()"
-                            class="px-3 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors flex items-center gap-1"
-                        >
-                            <i class="ti ti-settings"></i>
-                            <span class="hidden sm:inline">Upravljaj</span>
-                        </button>
-                    </div>
-
-                    <!-- Category cards grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="categories-container">
-                        <template x-for="kategorija in kategorije" :key="kategorija.emoji + kategorija.naziv">
-                            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow">
-                                <div class="flex items-center justify-between mb-3">
-                                    <h3 class="font-semibold text-lg flex items-center gap-2">
-                                        <span x-text="kategorija.emoji" class="text-2xl"></span>
-                                        <span x-text="kategorija.naziv"></span>
-                                    </h3>
-                                    <button
-                                        @click="openAddItemModal(kategorija)"
-                                        class="p-1 text-primary-500 hover:bg-primary-50 dark:hover:bg-gray-700 rounded"
-                                        title="Dodaj stavku"
-                                    >
+        <!-- Main Content -->
+        <main class="cockpit-main">
+            <!-- Left Panel - Categories Tree -->
+            <div class="main-panel">
+                <div class="tree-view">
+                    <template x-for="kategorija in kategorije" :key="kategorija.emoji + kategorija.naziv">
+                        <div class="tree-category">
+                            <!-- Category Header -->
+                            <div
+                                class="tree-category-header"
+                                :class="{ 'expanded': expandedCategories[kategorija.emoji + kategorija.naziv] }"
+                                @click="toggleCategory(kategorija)"
+                            >
+                                <i class="ti ti-chevron-right tree-toggle" :class="{ 'expanded': expandedCategories[kategorija.emoji + kategorija.naziv] }"></i>
+                                <span class="tree-category-emoji" x-text="kategorija.emoji"></span>
+                                <span class="tree-category-name" x-text="kategorija.naziv"></span>
+                                <span class="tree-category-total" x-text="formatCurrency(getCategoryTotal(kategorija))"></span>
+                                <div class="tree-category-actions" @click.stop>
+                                    <button class="tree-action-btn" @click="openAddItemModal(kategorija)" title="Dodaj stavku">
                                         <i class="ti ti-plus"></i>
                                     </button>
                                 </div>
+                            </div>
 
-                                <!-- Items list -->
-                                <ul class="space-y-2">
-                                    <template x-for="(stavka, index) in getStavkeZaKategoriju(kategorija)" :key="kategorija.naziv + '-' + index">
-                                        <li
-                                            class="flex flex-col py-2 px-3 rounded-lg group transition-colors"
-                                            :class="isContractExpiring(stavka) ? 'bg-red-500 text-white' : 'bg-gray-50 dark:bg-gray-700/50'"
-                                        >
-                                            <div class="flex items-center justify-between">
-                                                <div class="flex items-center gap-2">
-                                                    <span x-text="stavka.naziv" class="font-medium"></span>
+                            <!-- Category Items -->
+                            <div class="tree-items" x-show="expandedCategories[kategorija.emoji + kategorija.naziv]" x-collapse>
+                                <template x-for="(stavka, index) in getStavkeZaKategoriju(kategorija)" :key="kategorija.naziv + '-' + index">
+                                    <div
+                                        class="tree-item"
+                                        :class="{ 'contract-expiring': isContractExpiring(stavka) }"
+                                    >
+                                        <!-- Inline Edit Mode -->
+                                        <template x-if="editingInline && editingInline.stavka === stavka">
+                                            <div class="tree-item-name" @click.stop>
+                                                <input
+                                                    type="text"
+                                                    class="inline-edit-input"
+                                                    x-model="editingInline.naziv"
+                                                    @keydown.enter="saveInlineEdit(kategorija)"
+                                                    @keydown.escape="cancelInlineEdit()"
+                                                    @blur="saveInlineEdit(kategorija)"
+                                                    x-ref="inlineInput"
+                                                >
+                                            </div>
+                                        </template>
+
+                                        <!-- Normal Display Mode -->
+                                        <template x-if="!editingInline || editingInline.stavka !== stavka">
+                                            <div class="tree-item-name" @dblclick="startInlineEdit(stavka, kategorija)">
+                                                <span class="name-text" x-text="stavka.naziv"></span>
+                                                <div class="tree-item-icons">
                                                     <template x-if="stavka.napomena">
-                                                        <span
-                                                            class="cursor-help"
-                                                            :class="isContractExpiring(stavka) ? 'text-white/70' : 'text-gray-400'"
-                                                            :title="stavka.napomena"
-                                                        >
-                                                            <i class="ti ti-info-circle"></i>
-                                                        </span>
+                                                        <i class="ti ti-info-circle icon-info" :title="stavka.napomena"></i>
                                                     </template>
                                                     <template x-if="stavka.endDate">
-                                                        <span
-                                                            class="cursor-help"
-                                                            :class="isContractExpiring(stavka) ? 'text-white/70' : 'text-green-500'"
-                                                            :title="'Završava: ' + formatMonthYear(stavka.endDate)"
-                                                        >
-                                                            <i class="ti ti-calendar-off"></i>
-                                                        </span>
+                                                        <i class="ti ti-calendar-off icon-end-date" :title="'Zavrsava: ' + formatMonthYear(stavka.endDate)"></i>
                                                     </template>
                                                     <template x-if="stavka.contractEndDate && !isContractExpiring(stavka)">
-                                                        <span
-                                                            class="text-orange-500 cursor-help"
-                                                            :title="'Ugovor do: ' + formatMonthYear(stavka.contractEndDate)"
-                                                        >
-                                                            <i class="ti ti-file-certificate"></i>
-                                                        </span>
+                                                        <i class="ti ti-file-certificate icon-contract" :title="'Ugovor do: ' + formatMonthYear(stavka.contractEndDate)"></i>
                                                     </template>
                                                 </div>
-                                                <div class="flex items-center gap-2">
-                                                    <span
-                                                        class="font-semibold"
-                                                        :class="isContractExpiring(stavka) ? 'text-white' : 'text-primary-600 dark:text-primary-400'"
-                                                        x-text="formatCurrency(stavka.iznos)"
-                                                    ></span>
-                                                    <div class="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                                                        <button
-                                                            @click="openEditItemModal(kategorija, stavka)"
-                                                            class="p-1"
-                                                            :class="isContractExpiring(stavka) ? 'text-white/70 hover:text-white' : 'text-gray-500 hover:text-primary-500'"
-                                                        >
-                                                            <i class="ti ti-edit text-sm"></i>
-                                                        </button>
-                                                        <button
-                                                            @click="deleteStavka(kategorija, stavka)"
-                                                            class="p-1"
-                                                            :class="isContractExpiring(stavka) ? 'text-white/70 hover:text-white' : 'text-gray-500 hover:text-red-500'"
-                                                        >
-                                                            <i class="ti ti-trash text-sm"></i>
-                                                        </button>
-                                                    </div>
-                                                </div>
                                             </div>
-                                            <!-- Contract expiring warning -->
-                                            <template x-if="isContractExpiring(stavka)">
-                                                <div class="mt-1 text-sm text-white/90 flex items-center gap-1">
-                                                    <i class="ti ti-alert-triangle"></i>
-                                                    <span x-text="getContractWarning(stavka)"></span>
-                                                    <span class="text-white/70">- Pregovarajte o novom ugovoru!</span>
-                                                </div>
-                                            </template>
-                                        </li>
-                                    </template>
-                                    <template x-if="getStavkeZaKategoriju(kategorija).length === 0">
-                                        <li class="text-gray-400 text-sm italic py-2">Nema stavki</li>
-                                    </template>
-                                </ul>
+                                        </template>
 
-                                <!-- Category total -->
-                                <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex justify-between">
-                                    <span class="text-sm text-gray-500">Ukupno:</span>
-                                    <span class="font-bold" x-text="formatCurrency(getCategoryTotal(kategorija))"></span>
+                                        <!-- Value - Inline Edit -->
+                                        <template x-if="editingInline && editingInline.stavka === stavka">
+                                            <input
+                                                type="number"
+                                                class="inline-edit-input value-input"
+                                                x-model.number="editingInline.iznos"
+                                                @keydown.enter="saveInlineEdit(kategorija)"
+                                                @keydown.escape="cancelInlineEdit()"
+                                                @click.stop
+                                            >
+                                        </template>
+
+                                        <!-- Value - Normal -->
+                                        <template x-if="!editingInline || editingInline.stavka !== stavka">
+                                            <span class="tree-item-value" @dblclick="startInlineEdit(stavka, kategorija)" x-text="formatCurrency(stavka.iznos)"></span>
+                                        </template>
+
+                                        <!-- Actions -->
+                                        <div class="tree-item-actions">
+                                            <button class="tree-action-btn" @click="openEditItemModal(kategorija, stavka)" title="Uredi">
+                                                <i class="ti ti-edit"></i>
+                                            </button>
+                                            <button class="tree-action-btn danger" @click="deleteStavka(kategorija, stavka)" title="Obrisi">
+                                                <i class="ti ti-trash"></i>
+                                            </button>
+                                        </div>
+
+                                        <!-- Contract Warning -->
+                                        <template x-if="isContractExpiring(stavka)">
+                                            <div class="tree-item-warning">
+                                                <i class="ti ti-alert-triangle"></i>
+                                                <span x-text="getContractWarning(stavka)"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+
+                                <template x-if="getStavkeZaKategoriju(kategorija).length === 0">
+                                    <div class="tree-empty">Nema stavki - klikni + za dodavanje</div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template x-if="kategorije.length === 0">
+                        <div class="tree-empty">Nema kategorija - klikni <i class="ti ti-settings"></i> za dodavanje</div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Right Panel - Summary & Charts -->
+            <div class="side-panel">
+                <!-- Summary Section -->
+                <div class="panel-section">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i class="ti ti-report-money"></i>
+                            <span>Pregled</span>
+                        </div>
+                    </div>
+                    <div class="summary-grid">
+                        <div class="summary-row">
+                            <span class="summary-label">Ukupni prihodi</span>
+                            <span class="summary-value income" x-text="formatCurrency(plata)"></span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">Ukupni rashodi</span>
+                            <span class="summary-value expense" x-text="formatCurrency(ukupniRashodi)"></span>
+                        </div>
+                        <div class="summary-row highlight">
+                            <span class="summary-label">Ostaje za zivot</span>
+                            <span class="summary-value balance" :class="ostajeZaZivot >= 0 ? 'income' : 'expense'" x-text="formatCurrency(ostajeZaZivot)"></span>
+                        </div>
+                    </div>
+
+                    <!-- Sparkline -->
+                    <div class="sparkline-container" x-show="kategorije.length > 0">
+                        <template x-for="kategorija in kategorije" :key="'spark-' + kategorija.emoji">
+                            <div
+                                class="sparkline-bar"
+                                :style="'height: ' + getSparklineHeight(kategorija) + '%'"
+                                :title="kategorija.emoji + ' ' + kategorija.naziv + ': ' + formatCurrency(getCategoryTotal(kategorija))"
+                            ></div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Chart Section -->
+                <div class="panel-section">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i class="ti ti-chart-pie"></i>
+                            <span>Raspodela</span>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="expenseChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Expiring Expenses -->
+                <div class="panel-section" x-show="expiringExpenses.length > 0">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i class="ti ti-calendar-off"></i>
+                            <span>Oslobadjanje</span>
+                        </div>
+                    </div>
+                    <div class="expiring-list">
+                        <template x-for="(monthData, monthKey) in expiringByMonth" :key="monthKey">
+                            <div class="expiring-month">
+                                <div class="expiring-month-header">
+                                    <span class="expiring-month-name" x-text="formatMonthYear(monthKey)"></span>
+                                    <span class="expiring-month-total">+<span x-text="formatCurrency(monthData.total)"></span></span>
                                 </div>
+                                <template x-for="item in monthData.items" :key="item.naziv + item.iznos">
+                                    <div class="expiring-item">
+                                        <span x-text="item.naziv"></span>
+                                        <span x-text="formatCurrency(item.iznos)"></span>
+                                    </div>
+                                </template>
                             </div>
                         </template>
                     </div>
                 </div>
 
-                <!-- Right side: Chart & Summary -->
-                <div class="space-y-6">
-                    <!-- Summary panel -->
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4">
-                        <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
-                            <i class="ti ti-report-money"></i>
-                            Pregled
-                        </h2>
-
-                        <div class="space-y-3">
-                            <div class="flex justify-between items-center py-2">
-                                <span class="text-gray-600 dark:text-gray-400">Ukupni prihodi:</span>
-                                <span class="font-semibold text-green-600 dark:text-green-400" x-text="formatCurrency(plata)"></span>
-                            </div>
-                            <div class="flex justify-between items-center py-2">
-                                <span class="text-gray-600 dark:text-gray-400">Ukupni rashodi:</span>
-                                <span class="font-semibold text-red-600 dark:text-red-400" x-text="formatCurrency(ukupniRashodi)"></span>
-                            </div>
-                            <div class="flex justify-between items-center py-3 px-4 bg-primary-50 dark:bg-primary-900/30 rounded-lg border-2 border-primary-500">
-                                <span class="font-semibold text-primary-700 dark:text-primary-300">Ostaje za život:</span>
-                                <span class="text-xl font-bold" :class="ostajeZaZivot >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'" x-text="formatCurrency(ostajeZaZivot)"></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Pie Chart -->
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4">
-                        <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
-                            <i class="ti ti-chart-pie"></i>
-                            Raspodela
-                        </h2>
-                        <div class="relative">
-                            <canvas id="expenseChart" class="max-w-full"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Expiring Expenses -->
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4" x-show="expiringExpenses.length > 0">
-                        <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
-                            <i class="ti ti-calendar-off"></i>
-                            Oslobađanje sredstava
-                        </h2>
-                        <div class="space-y-3">
-                            <template x-for="(monthData, monthKey) in expiringByMonth" :key="monthKey">
-                                <div class="border-l-4 border-green-500 pl-3 py-2">
-                                    <div class="flex justify-between items-center mb-2">
-                                        <span class="font-semibold text-green-600 dark:text-green-400" x-text="formatMonthYear(monthKey)"></span>
-                                        <span class="text-sm font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-1 rounded">
-                                            +<span x-text="formatCurrency(monthData.total)"></span>
-                                        </span>
-                                    </div>
-                                    <ul class="space-y-1">
-                                        <template x-for="item in monthData.items" :key="item.naziv + item.iznos">
-                                            <li class="text-sm text-gray-600 dark:text-gray-400 flex justify-between">
-                                                <span x-text="item.naziv"></span>
-                                                <span x-text="formatCurrency(item.iznos)"></span>
-                                            </li>
-                                        </template>
-                                    </ul>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-
-                    <!-- History toggle -->
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4">
-                        <button
-                            @click="showHistory = !showHistory"
-                            class="w-full flex items-center justify-between text-xl font-semibold"
-                        >
-                            <span class="flex items-center gap-2">
-                                <i class="ti ti-history"></i>
-                                Istorija
-                            </span>
-                            <i class="ti" :class="showHistory ? 'ti-chevron-up' : 'ti-chevron-down'"></i>
-                        </button>
-
-                        <div x-show="showHistory" x-collapse class="mt-4">
-                            <ul class="space-y-2 max-h-64 overflow-y-auto">
-                                <template x-for="log in istorija.slice().reverse()" :key="log">
-                                    <li class="text-sm py-1 border-b border-gray-100 dark:border-gray-700" x-text="log"></li>
-                                </template>
-                                <template x-if="istorija.length === 0">
-                                    <li class="text-gray-400 text-sm italic">Nema istorije</li>
-                                </template>
-                            </ul>
-                        </div>
+                <!-- History Section -->
+                <div class="panel-section">
+                    <button class="history-toggle" @click="showHistory = !showHistory">
+                        <span><i class="ti ti-history"></i> Istorija (<span x-text="istorija.length"></span>)</span>
+                        <i class="ti" :class="showHistory ? 'ti-chevron-up' : 'ti-chevron-down'"></i>
+                    </button>
+                    <div class="history-list" x-show="showHistory">
+                        <template x-if="istorija.length === 0">
+                            <div class="history-item text-muted">Nema istorije</div>
+                        </template>
+                        <template x-for="(log, idx) in istorija.slice().reverse()" :key="idx">
+                            <div class="history-item" x-text="log"></div>
+                        </template>
                     </div>
                 </div>
             </div>
         </main>
 
-        <!-- Footer -->
-        <footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4 mt-6">
-            <div class="container mx-auto px-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                Troškovnik &copy; 2026 | Praćenje mesečnih troškova
-            </div>
-        </footer>
-
         <!-- Add/Edit Item Modal -->
-        <div x-show="showItemModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true">
-            <div class="flex items-center justify-center min-h-screen px-4">
-                <div class="fixed inset-0 bg-black/50" @click="closeItemModal()"></div>
-                <div class="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
-                    <h3 class="text-xl font-semibold mb-4" x-text="editingItem ? 'Uredi stavku' : 'Dodaj stavku'"></h3>
-
-                    <form @submit.prevent="saveItem()">
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Naziv</label>
-                                <input
-                                    type="text"
-                                    x-model="itemForm.naziv"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
-                                    required
-                                >
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Iznos (RSD)</label>
-                                <input
-                                    type="number"
-                                    x-model.number="itemForm.iznos"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
-                                    required
-                                    min="0"
-                                >
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Napomena (opciono)</label>
-                                <input
-                                    type="text"
-                                    x-model="itemForm.napomena"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
-                                >
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Datum završetka (opciono)</label>
-                                <input
-                                    type="month"
-                                    x-model="itemForm.endDate"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
-                                    placeholder="YYYY-MM"
-                                >
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Kada prestaje ovaj trošak (npr. rata kredita)</p>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Kraj ugovorene obaveze (opciono)</label>
-                                <input
-                                    type="month"
-                                    x-model="itemForm.contractEndDate"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
-                                    placeholder="YYYY-MM"
-                                >
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Kada ističe ugovor (npr. kablovska, telefon) - upozorenje 1 mesec ranije</p>
-                            </div>
-                            <div x-show="editingItem">
-                                <label class="block text-sm font-medium mb-1">Kategorija</label>
-                                <select
-                                    x-model="itemForm.kategorijaKey"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
-                                >
-                                    <template x-for="kat in kategorije" :key="kat.emoji + kat.naziv">
-                                        <option :value="kat.emoji + ' ' + kat.naziv" x-text="kat.emoji + ' ' + kat.naziv"></option>
-                                    </template>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="flex gap-3 mt-6">
-                            <button
-                                type="button"
-                                @click="closeItemModal()"
-                                class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                            >
-                                Otkaži
-                            </button>
-                            <button
-                                type="submit"
-                                class="flex-1 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg"
-                            >
-                                Sačuvaj
+        <template x-if="showItemModal">
+            <div x-cloak>
+                <div class="modal-backdrop" @click="closeItemModal()"></div>
+                <div class="modal-container">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <span class="modal-title" x-text="editingItem ? 'Uredi stavku' : 'Dodaj stavku'"></span>
+                            <button class="modal-close" @click="closeItemModal()">
+                                <i class="ti ti-x"></i>
                             </button>
                         </div>
-                    </form>
+                        <form @submit.prevent="saveItem()">
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label class="form-label">Naziv</label>
+                                    <input type="text" class="form-input" x-model="itemForm.naziv" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Iznos (RSD)</label>
+                                    <input type="number" class="form-input" x-model.number="itemForm.iznos" required min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Napomena</label>
+                                    <input type="text" class="form-input" x-model="itemForm.napomena" placeholder="Opciono">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Datum zavrsetka</label>
+                                    <input type="month" class="form-input" x-model="itemForm.endDate">
+                                    <div class="form-hint">Kada prestaje ovaj trosak (npr. rata kredita)</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Kraj ugovora</label>
+                                    <input type="month" class="form-input" x-model="itemForm.contractEndDate">
+                                    <div class="form-hint">Kada istice ugovor - upozorenje 1 mesec ranije</div>
+                                </div>
+                                <div class="form-group" x-show="editingItem">
+                                    <label class="form-label">Kategorija</label>
+                                    <select class="form-input form-select" x-model="itemForm.kategorijaKey">
+                                        <template x-for="kat in kategorije" :key="kat.emoji + kat.naziv">
+                                            <option :value="kat.emoji + ' ' + kat.naziv" x-text="kat.emoji + ' ' + kat.naziv"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary flex-1" @click="closeItemModal()">Otkazi</button>
+                                <button type="submit" class="btn btn-primary flex-1">Sacuvaj</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
-        </div>
+        </template>
 
         <!-- Category Management Modal -->
-        <div x-show="showCategoryModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true">
-            <div class="flex items-center justify-center min-h-screen px-4">
-                <div class="fixed inset-0 bg-black/50" @click="closeCategoryModal()"></div>
-                <div class="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-                    <h3 class="text-xl font-semibold mb-4">Upravljanje kategorijama</h3>
-
-                    <!-- Add new category -->
-                    <form @submit.prevent="addCategory()" class="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                        <h4 class="font-medium mb-3">Dodaj novu kategoriju</h4>
-                        <div class="flex gap-2">
-                            <input
-                                type="text"
-                                x-model="newCategory.emoji"
-                                class="w-16 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-center text-xl"
-                                placeholder="😀"
-                                maxlength="2"
-                            >
-                            <input
-                                type="text"
-                                x-model="newCategory.naziv"
-                                class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
-                                placeholder="Naziv kategorije"
-                            >
-                            <button
-                                type="submit"
-                                class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg"
-                            >
-                                <i class="ti ti-plus"></i>
+        <template x-if="showCategoryModal">
+            <div x-cloak>
+                <div class="modal-backdrop" @click="closeCategoryModal()"></div>
+                <div class="modal-container">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <span class="modal-title">Upravljanje kategorijama</span>
+                            <button class="modal-close" @click="closeCategoryModal()">
+                                <i class="ti ti-x"></i>
                             </button>
                         </div>
-                    </form>
-
-                    <!-- Existing categories -->
-                    <ul class="space-y-2">
-                        <template x-for="(kat, index) in kategorije" :key="index">
-                            <li class="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                                <span x-text="kat.emoji" class="text-2xl"></span>
-                                <span x-text="kat.naziv" class="flex-1 font-medium"></span>
-                                <button
-                                    @click="editCategory(kat)"
-                                    class="p-1 text-gray-500 hover:text-primary-500"
+                        <div class="modal-body">
+                            <!-- Add new category -->
+                            <form @submit.prevent="addCategory()" class="category-form">
+                                <input
+                                    type="text"
+                                    class="form-input category-emoji-input"
+                                    x-model="newCategory.emoji"
+                                    placeholder="E"
+                                    maxlength="2"
                                 >
-                                    <i class="ti ti-edit"></i>
-                                </button>
-                                <button
-                                    @click="deleteCategory(kat)"
-                                    class="p-1 text-gray-500 hover:text-red-500"
+                                <input
+                                    type="text"
+                                    class="form-input flex-1"
+                                    x-model="newCategory.naziv"
+                                    placeholder="Naziv kategorije"
                                 >
-                                    <i class="ti ti-trash"></i>
+                                <button type="submit" class="btn btn-success btn-sm">
+                                    <i class="ti ti-plus"></i>
                                 </button>
-                            </li>
-                        </template>
-                    </ul>
+                            </form>
 
-                    <button
-                        @click="closeCategoryModal()"
-                        class="w-full mt-6 px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg"
-                    >
-                        Zatvori
-                    </button>
+                            <!-- Existing categories -->
+                            <div class="category-list">
+                                <template x-for="(kat, index) in kategorije" :key="index">
+                                    <div class="category-list-item">
+                                        <span class="category-list-item-emoji" x-text="kat.emoji"></span>
+                                        <span class="category-list-item-name" x-text="kat.naziv"></span>
+                                        <button class="tree-action-btn" @click="editCategory(kat)">
+                                            <i class="ti ti-edit"></i>
+                                        </button>
+                                        <button class="tree-action-btn danger" @click="deleteCategory(kat)">
+                                            <i class="ti ti-trash"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary btn-block" @click="closeCategoryModal()">Zatvori</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </template>
 
     </div>
 

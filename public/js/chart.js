@@ -1,18 +1,19 @@
-// Troškovnik - Chart.js Pie Chart Logic
+// Troskovnik - Chart.js Pie Chart Logic (Cockpit Edition)
 
 const ChartManager = {
     chart: null,
+    // Cockpit-style colors - more muted, professional
     colors: [
-        '#3b82f6', // blue
-        '#ef4444', // red
-        '#10b981', // green
-        '#f59e0b', // amber
-        '#8b5cf6', // purple
-        '#ec4899', // pink
-        '#06b6d4', // cyan
-        '#84cc16', // lime
-        '#f97316', // orange
-        '#6366f1'  // indigo
+        '#4a9eff', // primary blue
+        '#ff4757', // red
+        '#00d26a', // green
+        '#ffa502', // amber
+        '#7c3aed', // purple
+        '#ff6b9d', // pink
+        '#00d4ff', // cyan
+        '#a8e063', // lime
+        '#ff7f50', // coral
+        '#5352ed'  // indigo
     ],
 
     init(canvasId, kategorije, getCategoryTotal, formatCurrency) {
@@ -28,30 +29,57 @@ const ChartManager = {
         const data = this.prepareData(kategorije, getCategoryTotal);
 
         this.chart = new Chart(ctx, {
-            type: 'pie',
+            type: 'doughnut', // Changed to doughnut for cockpit style
             data: data,
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
+                cutout: '60%', // Doughnut hole
                 plugins: {
                     legend: {
-                        position: 'bottom',
+                        position: 'right',
                         labels: {
-                            padding: 15,
+                            padding: 8,
                             usePointStyle: true,
-                            font: { size: 12 },
-                            color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151'
+                            pointStyle: 'rect',
+                            font: {
+                                family: "'SF Mono', 'Fira Code', Consolas, monospace",
+                                size: 10
+                            },
+                            color: '#a0a0b0',
+                            boxWidth: 8,
+                            boxHeight: 8
                         }
                     },
                     tooltip: {
+                        backgroundColor: '#1e1e32',
+                        titleColor: '#e8e8e8',
+                        bodyColor: '#a0a0b0',
+                        borderColor: '#2a2a45',
+                        borderWidth: 1,
+                        padding: 8,
+                        titleFont: {
+                            family: "'SF Mono', Consolas, monospace",
+                            size: 11
+                        },
+                        bodyFont: {
+                            family: "'SF Mono', Consolas, monospace",
+                            size: 10
+                        },
                         callbacks: {
                             label: (context) => {
                                 const value = context.raw;
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
+                                return ` ${formatCurrency(value)} (${percentage}%)`;
                             }
                         }
+                    }
+                },
+                elements: {
+                    arc: {
+                        borderWidth: 1,
+                        borderColor: '#1a1a2e'
                     }
                 }
             }
@@ -77,8 +105,11 @@ const ChartManager = {
             datasets: [{
                 data,
                 backgroundColor: this.colors.slice(0, data.length),
-                borderWidth: 0,
-                hoverOffset: 4
+                borderWidth: 1,
+                borderColor: '#1a1a2e',
+                hoverOffset: 2,
+                hoverBorderColor: '#4a9eff',
+                hoverBorderWidth: 2
             }]
         };
     },
@@ -88,14 +119,6 @@ const ChartManager = {
 
         const data = this.prepareData(kategorije, getCategoryTotal);
         this.chart.data = data;
-        this.chart.update();
-    },
-
-    updateTheme(isDark) {
-        if (!this.chart) return;
-
-        const textColor = isDark ? '#e5e7eb' : '#374151';
-        this.chart.options.plugins.legend.labels.color = textColor;
         this.chart.update();
     },
 

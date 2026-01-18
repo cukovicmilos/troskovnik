@@ -1,4 +1,4 @@
-// Troškovnik - Alpine.js Application
+// Troskovnik - Alpine.js Application (Cockpit Edition)
 
 function troskovnikApp() {
     return {
@@ -12,9 +12,15 @@ function troskovnikApp() {
         // UI State
         showItemModal: false,
         showCategoryModal: false,
-        showHistory: false,
+        showHistory: true,
         editingItem: null,
         selectedKategorija: null,
+
+        // Tree view state - all expanded by default
+        expandedCategories: {},
+
+        // Inline editing state
+        editingInline: null,
 
         // Forms
         itemForm: {
@@ -42,6 +48,20 @@ function troskovnikApp() {
             return this.plata - this.ukupniRashodi;
         },
 
+        get savingsPercent() {
+            if (this.plata === 0) return 0;
+            return (this.ostajeZaZivot / this.plata) * 100;
+        },
+
+        get totalItems() {
+            let count = 0;
+            for (const kat of this.kategorije) {
+                const key = `${kat.emoji} ${kat.naziv}`;
+                count += (this.troskovi[key] || []).length;
+            }
+            return count;
+        },
+
         get darkMode() {
             return this.tema === 'dark';
         },
@@ -56,11 +76,9 @@ function troskovnikApp() {
                 const stavke = this.troskovi[key] || [];
                 for (const stavka of stavke) {
                     if (stavka.endDate) {
-                        // Parse YYYY-MM format
                         const [year, month] = stavka.endDate.split('-').map(Number);
                         if (year && month) {
-                            const endDate = new Date(year, month - 1); // month is 0-indexed
-                            // Only include future or current month
+                            const endDate = new Date(year, month - 1);
                             if (endDate >= new Date(now.getFullYear(), now.getMonth())) {
                                 expiring.push({
                                     naziv: stavka.naziv,
@@ -75,12 +93,10 @@ function troskovnikApp() {
                 }
             }
 
-            // Sort by end date
             expiring.sort((a, b) => a.dateObj - b.dateObj);
             return expiring;
         },
 
-        // Group expiring expenses by month
         get expiringByMonth() {
             const grouped = {};
             for (const item of this.expiringExpenses) {
@@ -101,11 +117,10 @@ function troskovnikApp() {
         formatMonthYear(dateStr) {
             if (!dateStr) return '';
             const [year, month] = dateStr.split('-').map(Number);
-            const months = ['Januar', 'Februar', 'Mart', 'April', 'Maj', 'Jun', 'Jul', 'Avgust', 'Septembar', 'Oktobar', 'Novembar', 'Decembar'];
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Avg', 'Sep', 'Okt', 'Nov', 'Dec'];
             return `${months[month - 1]} ${year}`;
         },
 
-        // Check if contract is expiring (current month or 1 month before)
         isContractExpiring(stavka) {
             if (!stavka.contractEndDate) return false;
 
@@ -114,18 +129,15 @@ function troskovnikApp() {
 
             const now = new Date();
             const currentYear = now.getFullYear();
-            const currentMonth = now.getMonth() + 1; // 1-indexed
+            const currentMonth = now.getMonth() + 1;
 
-            // Calculate months difference
             const contractMonths = year * 12 + month;
             const currentMonths = currentYear * 12 + currentMonth;
             const diff = contractMonths - currentMonths;
 
-            // Expiring if within 1 month (0 = this month, 1 = next month)
             return diff >= 0 && diff <= 1;
         },
 
-        // Get contract warning message
         getContractWarning(stavka) {
             if (!stavka.contractEndDate) return '';
 
@@ -139,24 +151,23 @@ function troskovnikApp() {
             const diff = contractMonths - currentMonths;
 
             if (diff === 0) {
-                return 'Ugovor ističe ovog meseca!';
+                return 'Ugovor istice ovog meseca!';
             } else if (diff === 1) {
-                return 'Ugovor ističe sledećeg meseca!';
+                return 'Ugovor istice sledeceg meseca!';
             }
             return '';
         },
 
         // Methods
         async init() {
-            // Load theme from localStorage
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme) {
-                this.tema = savedTheme;
-            }
-            this.applyTheme();
+            // Always use dark theme for cockpit style
+            this.tema = 'dark';
 
             // Load data from server
             await this.loadData();
+
+            // Expand all categories by default
+            this.expandAllCategories();
 
             // Initialize chart
             this.$nextTick(() => {
@@ -164,19 +175,72 @@ function troskovnikApp() {
             });
         },
 
-        toggleTheme() {
-            this.tema = this.tema === 'dark' ? 'light' : 'dark';
-            localStorage.setItem('theme', this.tema);
-            this.applyTheme();
-            this.saveData();
+        expandAllCategories() {
+            for (const kat of this.kategorije) {
+                const key = `${kat.emoji}${kat.naziv}`;
+                this.expandedCategories[key] = true;
+            }
         },
 
-        applyTheme() {
-            if (this.tema === 'dark') {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
+        toggleCategory(kategorija) {
+            const key = `${kategorija.emoji}${kategorija.naziv}`;
+            this.expandedCategories[key] = !this.expandedCategories[key];
+        },
+
+        // Inline editing
+        startInlineEdit(stavka, kategorija) {
+            this.editingInline = {
+                stavka: stavka,
+                kategorija: kategorija,
+                naziv: stavka.naziv,
+                iznos: stavka.iznos
+            };
+            this.$nextTick(() => {
+                const input = this.$refs.inlineInput;
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            });
+        },
+
+        saveInlineEdit(kategorija) {
+            if (!this.editingInline) return;
+
+            const key = `${kategorija.emoji} ${kategorija.naziv}`;
+            const stavke = this.troskovi[key] || [];
+            const index = stavke.findIndex(s =>
+                s.naziv === this.editingInline.stavka.naziv &&
+                s.iznos === this.editingInline.stavka.iznos
+            );
+
+            if (index !== -1) {
+                const oldNaziv = stavke[index].naziv;
+                const oldIznos = stavke[index].iznos;
+
+                stavke[index].naziv = this.editingInline.naziv;
+                stavke[index].iznos = this.editingInline.iznos;
+
+                if (oldNaziv !== this.editingInline.naziv || oldIznos !== this.editingInline.iznos) {
+                    const now = new Date();
+                    const timestamp = now.toISOString().slice(0, 16).replace('T', ' ');
+                    this.addLog(`${timestamp} | Izmenjeno: ${this.editingInline.naziv} ${oldIznos} -> ${this.editingInline.iznos}`);
+                    this.saveData();
+                }
             }
+
+            this.editingInline = null;
+        },
+
+        cancelInlineEdit() {
+            this.editingInline = null;
+        },
+
+        // Sparkline
+        getSparklineHeight(kategorija) {
+            const total = this.getCategoryTotal(kategorija);
+            if (this.ukupniRashodi === 0) return 0;
+            return Math.max(5, (total / this.ukupniRashodi) * 100);
         },
 
         async loadData() {
@@ -185,6 +249,7 @@ function troskovnikApp() {
                 if (!response.ok) throw new Error('Failed to load data');
                 const mdContent = await response.text();
                 this.parseMarkdown(mdContent);
+                this.expandAllCategories();
             } catch (error) {
                 console.error('Error loading data:', error);
             }
@@ -217,20 +282,16 @@ function troskovnikApp() {
             for (const line of lines) {
                 const trimmed = line.trim();
 
-                // Section headers
                 if (trimmed.startsWith('## ')) {
                     currentSection = trimmed.substring(3).trim();
                     currentCategory = '';
                     continue;
                 }
 
-                // Category headers in Troškovi
-                if (trimmed.startsWith('### ') && currentSection === 'Troškovi') {
+                if (trimmed.startsWith('### ') && (currentSection === 'Troskovi' || currentSection === 'Troškovi')) {
                     currentCategory = trimmed.substring(4).trim();
-                    // Extract emoji and name
                     const match = currentCategory.match(/^(\S+)\s+(.+)$/);
                     if (match) {
-                        const [, emoji, naziv] = match;
                         if (!this.troskovi[currentCategory]) {
                             this.troskovi[currentCategory] = [];
                         }
@@ -238,19 +299,16 @@ function troskovnikApp() {
                     continue;
                 }
 
-                // Parse settings
-                if (currentSection === 'Podešavanja' && trimmed.startsWith('- ')) {
+                if ((currentSection === 'Podesavanja' || currentSection === 'Podešavanja') && trimmed.startsWith('- ')) {
                     const content = trimmed.substring(2);
                     if (content.startsWith('Plata:')) {
                         this.plata = parseInt(content.split(':')[1].trim()) || 0;
                     } else if (content.startsWith('Tema:')) {
                         this.tema = content.split(':')[1].trim() || 'dark';
-                        this.applyTheme();
                     }
                     continue;
                 }
 
-                // Parse categories
                 if (currentSection === 'Kategorije' && trimmed.startsWith('- ')) {
                     const content = trimmed.substring(2);
                     const match = content.match(/^(\S+)\s+(.+)$/);
@@ -265,8 +323,7 @@ function troskovnikApp() {
                     continue;
                 }
 
-                // Parse expenses
-                if (currentSection === 'Troškovi' && currentCategory && trimmed.startsWith('- ')) {
+                if ((currentSection === 'Troskovi' || currentSection === 'Troškovi') && currentCategory && trimmed.startsWith('- ')) {
                     const content = trimmed.substring(2);
                     const parts = content.split('|').map(p => p.trim());
                     if (parts.length >= 2) {
@@ -285,7 +342,6 @@ function troskovnikApp() {
                     continue;
                 }
 
-                // Parse history
                 if (currentSection === 'Istorija' && trimmed.startsWith('- ')) {
                     this.istorija.push(trimmed.substring(2));
                     continue;
@@ -296,19 +352,16 @@ function troskovnikApp() {
         toMarkdown() {
             let md = '# Troškovnik\n\n';
 
-            // Settings
             md += '## Podešavanja\n';
             md += `- Plata: ${this.plata}\n`;
             md += `- Tema: ${this.tema}\n\n`;
 
-            // Categories
             md += '## Kategorije\n';
             for (const kat of this.kategorije) {
                 md += `- ${kat.emoji} ${kat.naziv}\n`;
             }
             md += '\n';
 
-            // Expenses
             md += '## Troškovi\n';
             for (const kat of this.kategorije) {
                 const key = `${kat.emoji} ${kat.naziv}`;
@@ -327,7 +380,6 @@ function troskovnikApp() {
                 md += '\n';
             }
 
-            // History
             md += '## Istorija\n';
             for (const log of this.istorija) {
                 md += `- ${log}\n`;
@@ -336,7 +388,6 @@ function troskovnikApp() {
             return md;
         },
 
-        // Category methods
         getStavkeZaKategoriju(kategorija) {
             const key = `${kategorija.emoji} ${kategorija.naziv}`;
             const stavke = this.troskovi[key] || [];
@@ -348,7 +399,6 @@ function troskovnikApp() {
             return stavke.reduce((sum, s) => sum + s.iznos, 0);
         },
 
-        // Item modal methods
         editingItemIndex: -1,
 
         openAddItemModal(kategorija) {
@@ -363,7 +413,6 @@ function troskovnikApp() {
             this.selectedKategorija = kategorija;
             this.editingItem = stavka;
             const kategorijaKey = `${kategorija.emoji} ${kategorija.naziv}`;
-            // Find the actual index in the original (unsorted) array
             const originalStavke = this.troskovi[kategorijaKey] || [];
             this.editingItemIndex = originalStavke.findIndex(s =>
                 s.naziv === stavka.naziv && s.iznos === stavka.iznos && s.napomena === stavka.napomena && s.endDate === stavka.endDate && s.contractEndDate === stavka.contractEndDate
@@ -385,7 +434,6 @@ function troskovnikApp() {
             const now = new Date();
             const timestamp = now.toISOString().slice(0, 16).replace('T', ' ');
 
-            // Prepare item data (without kategorijaKey)
             const itemData = {
                 naziv: this.itemForm.naziv,
                 iznos: this.itemForm.iznos,
@@ -395,26 +443,20 @@ function troskovnikApp() {
             };
 
             if (this.editingItem && this.editingItemIndex !== -1) {
-                // Update existing using stored index
                 const oldIznos = this.troskovi[originalKey][this.editingItemIndex].iznos;
 
-                // Check if category changed
                 if (newKey !== originalKey) {
-                    // Remove from old category
                     this.troskovi[originalKey].splice(this.editingItemIndex, 1);
-                    // Add to new category
                     if (!this.troskovi[newKey]) {
                         this.troskovi[newKey] = [];
                     }
                     this.troskovi[newKey].push(itemData);
-                    this.addLog(`${timestamp} | Premešteno: ${itemData.naziv} iz ${originalKey} u ${newKey}`);
+                    this.addLog(`${timestamp} | Premesteno: ${itemData.naziv} iz ${originalKey} u ${newKey}`);
                 } else {
-                    // Same category, just update
                     this.troskovi[originalKey][this.editingItemIndex] = itemData;
                     this.addLog(`${timestamp} | Izmenjeno: ${itemData.naziv} ${oldIznos} -> ${itemData.iznos} RSD`);
                 }
             } else {
-                // Add new
                 if (!this.troskovi[originalKey]) {
                     this.troskovi[originalKey] = [];
                 }
@@ -427,10 +469,9 @@ function troskovnikApp() {
         },
 
         deleteStavka(kategorija, stavka) {
-            if (!confirm(`Da li ste sigurni da želite da obrišete "${stavka.naziv}"?`)) return;
+            if (!confirm(`Obrisati "${stavka.naziv}"?`)) return;
 
             const key = `${kategorija.emoji} ${kategorija.naziv}`;
-            // Find by all properties to handle duplicates
             const index = this.troskovi[key].findIndex(s =>
                 s.naziv === stavka.naziv && s.iznos === stavka.iznos && s.napomena === stavka.napomena && s.endDate === stavka.endDate && s.contractEndDate === stavka.contractEndDate
             );
@@ -443,7 +484,6 @@ function troskovnikApp() {
             }
         },
 
-        // Category modal methods
         openCategoryModal() {
             this.showCategoryModal = true;
         },
@@ -459,6 +499,9 @@ function troskovnikApp() {
             this.kategorije.push({ ...this.newCategory });
             const key = `${this.newCategory.emoji} ${this.newCategory.naziv}`;
             this.troskovi[key] = [];
+
+            // Auto expand new category
+            this.expandedCategories[`${this.newCategory.emoji}${this.newCategory.naziv}`] = true;
 
             const now = new Date();
             const timestamp = now.toISOString().slice(0, 16).replace('T', ' ');
@@ -476,11 +519,13 @@ function troskovnikApp() {
                 const oldKey = `${kat.emoji} ${kat.naziv}`;
                 const newKey = `${newEmoji} ${newNaziv}`;
 
-                // Transfer expenses
                 this.troskovi[newKey] = this.troskovi[oldKey] || [];
                 delete this.troskovi[oldKey];
 
-                // Update category
+                // Update expanded state
+                delete this.expandedCategories[`${kat.emoji}${kat.naziv}`];
+                this.expandedCategories[`${newEmoji}${newNaziv}`] = true;
+
                 kat.emoji = newEmoji;
                 kat.naziv = newNaziv;
 
@@ -497,15 +542,16 @@ function troskovnikApp() {
             const stavke = this.troskovi[key] || [];
 
             if (stavke.length > 0) {
-                if (!confirm(`Kategorija "${key}" ima ${stavke.length} stavki. Da li ste sigurni?`)) return;
+                if (!confirm(`Kategorija "${key}" ima ${stavke.length} stavki. Obrisati?`)) return;
             } else {
-                if (!confirm(`Da li ste sigurni da želite da obrišete kategoriju "${key}"?`)) return;
+                if (!confirm(`Obrisati kategoriju "${key}"?`)) return;
             }
 
             const index = this.kategorije.findIndex(k => k.emoji === kat.emoji && k.naziv === kat.naziv);
             if (index !== -1) {
                 this.kategorije.splice(index, 1);
                 delete this.troskovi[key];
+                delete this.expandedCategories[`${kat.emoji}${kat.naziv}`];
 
                 const now = new Date();
                 const timestamp = now.toISOString().slice(0, 16).replace('T', ' ');
@@ -515,16 +561,14 @@ function troskovnikApp() {
             }
         },
 
-        // Utility methods
         formatCurrency(value) {
-            return new Intl.NumberFormat('sr-RS').format(value) + ' RSD';
+            return new Intl.NumberFormat('sr-RS').format(value);
         },
 
         addLog(message) {
             this.istorija.push(message);
         },
 
-        // Chart - uses ChartManager from chart.js
         initChart() {
             if (window.ChartManager) {
                 ChartManager.init(

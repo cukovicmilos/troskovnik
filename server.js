@@ -9,6 +9,17 @@ const DATA_FILE = path.join(__dirname, 'data', 'troskovnik.md');
 // Middleware
 app.use(express.text({ type: 'text/plain' }));
 app.use(express.json());
+
+// Disable caching for HTML files
+app.use((req, res, next) => {
+    if (req.path.endsWith('.html') || req.path === '/') {
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+    }
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // GET /api/data - čita troskovnik.md i vraća raw content
