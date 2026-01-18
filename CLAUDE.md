@@ -27,3 +27,15 @@ You MUST read the overview resource to understand the complete workflow. The inf
 </CRITICAL_INSTRUCTION>
 
 <!-- BACKLOG.MD MCP GUIDELINES END -->
+
+## Git Operations
+
+When running as root/sudo, use the `chule` user for git commit and push operations:
+
+```bash
+sudo -u chule git add .
+sudo -u chule git commit -m "message"
+sudo -u chule git push
+```
+
+This is required because the SSH key for GitHub is configured under the `chule` user account.
