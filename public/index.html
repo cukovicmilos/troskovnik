@@ -11,15 +11,15 @@
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 
-    <!-- Alpine.js + Collapse plugin -->
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Alpine.js + Collapse plugin (local) -->
+    <script defer src="js/alpine-collapse.min.js"></script>
+    <script defer src="js/alpine.min.js"></script>
 
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js (local) -->
+    <script src="js/chartjs.min.js"></script>
 
-    <!-- Tabler Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+    <!-- Tabler Icons (local) -->
+    <link rel="stylesheet" href="css/tabler-icons.min.css">
 
     <!-- Custom styles -->
     <link rel="stylesheet" href="css/style.css">
@@ -225,7 +225,7 @@
 
                     <!-- Sparkline -->
                     <div class="sparkline-container" x-show="kategorije.length > 0">
-                        <template x-for="kategorija in kategorije" :key="'spark-' + kategorija.emoji">
+                        <template x-for="kategorija in kategorije" :key="'spark-' + kategorija.emoji + kategorija.naziv">
                             <div
                                 class="sparkline-bar"
                                 :style="'height: ' + getSparklineHeight(kategorija) + '%'"

@@ -135,7 +135,7 @@ function troskovnikApp() {
             const currentMonths = currentYear * 12 + currentMonth;
             const diff = contractMonths - currentMonths;
 
-            return diff >= 0 && diff <= 1;
+            return diff <= 1;
         },
 
         getContractWarning(stavka) {
@@ -150,7 +150,9 @@ function troskovnikApp() {
             const currentMonths = currentYear * 12 + currentMonth;
             const diff = contractMonths - currentMonths;
 
-            if (diff === 0) {
+            if (diff < 0) {
+                return 'Ugovor je istekao!';
+            } else if (diff === 0) {
                 return 'Ugovor istice ovog meseca!';
             } else if (diff === 1) {
                 return 'Ugovor istice sledeceg meseca!';
