@@ -28,7 +28,8 @@ function troskovnikApp() {
             iznos: 0,
             napomena: '',
             endDate: '',
-            contractEndDate: ''
+            contractEndDate: '',
+            kategorijaKey: ''
         },
         newCategory: {
             emoji: '',
@@ -407,7 +408,12 @@ function troskovnikApp() {
             this.selectedKategorija = kategorija;
             this.editingItem = null;
             this.editingItemIndex = -1;
-            this.itemForm = { naziv: '', iznos: 0, napomena: '', endDate: '', contractEndDate: '', kategorijaKey: '' };
+            this.itemForm.naziv = '';
+            this.itemForm.iznos = 0;
+            this.itemForm.napomena = '';
+            this.itemForm.endDate = '';
+            this.itemForm.contractEndDate = '';
+            this.itemForm.kategorijaKey = `${kategorija.emoji} ${kategorija.naziv}`;
             this.showItemModal = true;
         },
 
@@ -419,7 +425,12 @@ function troskovnikApp() {
             this.editingItemIndex = originalStavke.findIndex(s =>
                 s.naziv === stavka.naziv && s.iznos === stavka.iznos && s.napomena === stavka.napomena && s.endDate === stavka.endDate && s.contractEndDate === stavka.contractEndDate
             );
-            this.itemForm = { ...stavka, kategorijaKey };
+            this.itemForm.naziv = stavka.naziv;
+            this.itemForm.iznos = stavka.iznos;
+            this.itemForm.napomena = stavka.napomena || '';
+            this.itemForm.endDate = stavka.endDate || '';
+            this.itemForm.contractEndDate = stavka.contractEndDate || '';
+            this.itemForm.kategorijaKey = kategorijaKey;
             this.showItemModal = true;
         },
 

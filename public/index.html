@@ -329,10 +329,10 @@
                                     <div class="form-hint">Kada istice ugovor - upozorenje 1 mesec ranije</div>
                                 </div>
                                 <div class="form-group" x-show="editingItem">
-                                    <label class="form-label">Kategorija</label>
-                                    <select class="form-input form-select" x-model="itemForm.kategorijaKey">
-                                        <template x-for="kat in kategorije" :key="kat.emoji + kat.naziv">
-                                            <option :value="kat.emoji + ' ' + kat.naziv" x-text="kat.emoji + ' ' + kat.naziv"></option>
+                                    <label class="form-label">Kategorija (<span x-text="itemForm.kategorijaKey" style="color:#f59e0b"></span>)</label>
+                                    <select class="form-input form-select" @change="itemForm.kategorijaKey = $event.target.value">
+                                        <template x-for="kat in kategorije" :key="kat.emoji + kat.naziv + '-' + (editingItem ? editingItem.naziv : 'add')">
+                                            <option :value="kat.emoji + ' ' + kat.naziv" :selected="itemForm.kategorijaKey === (kat.emoji + ' ' + kat.naziv)" x-text="kat.emoji + ' ' + kat.naziv"></option>
                                         </template>
                                     </select>
                                 </div>
