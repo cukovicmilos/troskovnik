@@ -37,19 +37,7 @@ const ChartManager = {
                 cutout: '60%', // Doughnut hole
                 plugins: {
                     legend: {
-                        position: 'right',
-                        labels: {
-                            padding: 8,
-                            usePointStyle: true,
-                            pointStyle: 'rect',
-                            font: {
-                                family: "'SF Mono', 'Fira Code', Consolas, monospace",
-                                size: 10
-                            },
-                            color: '#a0a0b0',
-                            boxWidth: 8,
-                            boxHeight: 8
-                        }
+                        display: false
                     },
                     tooltip: {
                         backgroundColor: '#1e1e32',

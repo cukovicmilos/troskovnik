@@ -526,28 +526,44 @@ function troskovnikApp() {
 
         editCategory(kat) {
             const newEmoji = prompt('Emoji:', kat.emoji);
+            if (newEmoji === null) return;
+
             const newNaziv = prompt('Naziv:', kat.naziv);
+            if (newNaziv === null) return;
 
-            if (newEmoji && newNaziv) {
-                const oldKey = `${kat.emoji} ${kat.naziv}`;
-                const newKey = `${newEmoji} ${newNaziv}`;
+            const trimmedEmoji = newEmoji.trim();
+            const trimmedNaziv = newNaziv.trim();
 
-                this.troskovi[newKey] = this.troskovi[oldKey] || [];
-                delete this.troskovi[oldKey];
-
-                // Update expanded state
-                delete this.expandedCategories[`${kat.emoji}${kat.naziv}`];
-                this.expandedCategories[`${newEmoji}${newNaziv}`] = true;
-
-                kat.emoji = newEmoji;
-                kat.naziv = newNaziv;
-
-                const now = new Date();
-                const timestamp = now.toISOString().slice(0, 16).replace('T', ' ');
-                this.addLog(`${timestamp} | Izmenjena kategorija: ${oldKey} -> ${newKey}`);
-
-                this.saveData();
+            if (!trimmedEmoji || !trimmedNaziv) {
+                alert('Emoji i naziv su obavezni.');
+                return;
             }
+
+            const oldKey = `${kat.emoji} ${kat.naziv}`;
+            const newKey = `${trimmedEmoji} ${trimmedNaziv}`;
+
+            if (oldKey === newKey) return;
+
+            if (this.troskovi[newKey]) {
+                alert(`Kategorija "${newKey}" već postoji. Izaberite drugačiji emoji ili naziv.`);
+                return;
+            }
+
+            this.troskovi[newKey] = this.troskovi[oldKey] || [];
+            delete this.troskovi[oldKey];
+
+            // Update expanded state
+            delete this.expandedCategories[`${kat.emoji}${kat.naziv}`];
+            this.expandedCategories[`${trimmedEmoji}${trimmedNaziv}`] = true;
+
+            kat.emoji = trimmedEmoji;
+            kat.naziv = trimmedNaziv;
+
+            const now = new Date();
+            const timestamp = now.toISOString().slice(0, 16).replace('T', ' ');
+            this.addLog(`${timestamp} | Izmenjena kategorija: ${oldKey} -> ${newKey}`);
+
+            this.saveData();
         },
 
         deleteCategory(kat) {
@@ -555,7 +571,7 @@ function troskovnikApp() {
             const stavke = this.troskovi[key] || [];
 
             if (stavke.length > 0) {
-                if (!confirm(`Kategorija "${key}" ima ${stavke.length} stavki. Obrisati?`)) return;
+                if (!confirm(`Kategorija "${key}" ima ${stavke.length} stavki. Brisanjem će se trajno izgubiti sve stavke. Obrisati?`)) return;
             } else {
                 if (!confirm(`Obrisati kategoriju "${key}"?`)) return;
             }
