@@ -71,6 +71,36 @@ body {
     display: none !important;
 }
 
+/* ===== ICONS - Ensure contrast in dark mode ===== */
+/* Tabler icons base color */
+.ti {
+    color: currentColor;
+}
+
+/* Native date/month picker icons - replace with custom light icon */
+input[type="date"],
+input[type="month"] {
+    color-scheme: dark;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator {
+    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNlOGU4ZTgiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSIzIiB5PSI0IiB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHJ4PSIyIiByeT0iMiIvPjxsaW5lIHgxPSIxNiIgeTE9IjIiIHgyPSIxNiIgeTI9IjYiLz48bGluZSB4MT0iOCIgeTE9IjIiIHgyPSI4IiB5Mj0iNiIvPjxsaW5lIHgxPSIzIiB5MT0iMTAiIHgyPSIyMSIgeTI9IjEwIi8+PC9zdmc+');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    width: 16px;
+    height: 16px;
+    opacity: 1;
+    filter: none;
+    cursor: pointer;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="month"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 0.8;
+}
+
 /* ===== SCROLLBAR - Thin & Dark ===== */
 ::-webkit-scrollbar {
     width: 6px;
@@ -217,6 +247,18 @@ h1, h2, h3, h4, h5, h6 {
 .header-input-group .currency {
     color: var(--text-muted);
     font-size: var(--font-size-xs);
+}
+
+/* Compact salary input inside the status bar */
+.status-bar-left .header-input-group {
+    padding: 1px 6px;
+    height: 22px;
+}
+
+.status-bar-left .header-input-group input {
+    width: 60px;
+    font-size: var(--font-size-xs);
+    padding: 0;
 }
 
 .icon-btn {

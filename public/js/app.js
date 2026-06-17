@@ -1,4 +1,4 @@
-// Troskovnik - Alpine.js Application (Cockpit Edition)
+// Troškovnik - Alpine.js Application (Cockpit Edition)
 
 function troskovnikApp() {
     return {
@@ -154,9 +154,9 @@ function troskovnikApp() {
             if (diff < 0) {
                 return 'Ugovor je istekao!';
             } else if (diff === 0) {
-                return 'Ugovor istice ovog meseca!';
+                return 'Ugovor ističe ovog meseca!';
             } else if (diff === 1) {
-                return 'Ugovor istice sledeceg meseca!';
+                return 'Ugovor ističe sledećeg meseca!';
             }
             return '';
         },
@@ -464,7 +464,7 @@ function troskovnikApp() {
                         this.troskovi[newKey] = [];
                     }
                     this.troskovi[newKey].push(itemData);
-                    this.addLog(`${timestamp} | Premesteno: ${itemData.naziv} iz ${originalKey} u ${newKey}`);
+                    this.addLog(`${timestamp} | Premešteno: ${itemData.naziv} iz ${originalKey} u ${newKey}`);
                 } else {
                     this.troskovi[originalKey][this.editingItemIndex] = itemData;
                     this.addLog(`${timestamp} | Izmenjeno: ${itemData.naziv} ${oldIznos} -> ${itemData.iznos} RSD`);

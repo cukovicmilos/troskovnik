@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Troskovnik</title>
+    <title>Troškovnik</title>
 
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -22,7 +22,7 @@
     <link rel="stylesheet" href="css/tabler-icons.min.css">
 
     <!-- Custom styles -->
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
     <div x-data="troskovnikApp()" x-init="init()" class="cockpit-container">
@@ -30,9 +30,15 @@
         <!-- Status Bar (Top) -->
         <div class="status-bar">
             <div class="status-bar-left">
-                <div class="status-item">
-                    <span class="status-label">Prihod</span>
-                    <span class="status-value profit" x-text="formatCurrency(plata)"></span>
+                <div class="header-input-group">
+                    <label>Plata</label>
+                    <input
+                        type="number"
+                        x-model.number="plata"
+                        @change="saveData()"
+                        placeholder="0"
+                    >
+                    <span class="currency">RSD</span>
                 </div>
                 <div class="status-item">
                     <span class="status-label">Rashod</span>
@@ -63,21 +69,10 @@
         <header class="cockpit-header">
             <div class="cockpit-logo">
                 <i class="ti ti-wallet"></i>
-                <span>TROSKOVNIK</span>
+                <span>TROŠKOVNIK</span>
             </div>
 
             <div class="header-controls">
-                <div class="header-input-group">
-                    <label>Plata</label>
-                    <input
-                        type="number"
-                        x-model.number="plata"
-                        @change="saveData()"
-                        placeholder="0"
-                    >
-                    <span class="currency">RSD</span>
-                </div>
-
                 <button @click="openCategoryModal()" class="icon-btn" title="Kategorije">
                     <i class="ti ti-settings"></i>
                 </button>
@@ -139,7 +134,7 @@
                                                         <i class="ti ti-info-circle icon-info" :title="stavka.napomena"></i>
                                                     </template>
                                                     <template x-if="stavka.endDate">
-                                                        <i class="ti ti-calendar-off icon-end-date" :title="'Zavrsava: ' + formatMonthYear(stavka.endDate)"></i>
+                                                        <i class="ti ti-calendar-off icon-end-date" :title="'Završava: ' + formatMonthYear(stavka.endDate)"></i>
                                                     </template>
                                                     <template x-if="stavka.contractEndDate && !isContractExpiring(stavka)">
                                                         <i class="ti ti-file-certificate icon-contract" :title="'Ugovor do: ' + formatMonthYear(stavka.contractEndDate)"></i>
@@ -170,7 +165,7 @@
                                             <button class="tree-action-btn" @click="openEditItemModal(kategorija, stavka)" title="Uredi">
                                                 <i class="ti ti-edit"></i>
                                             </button>
-                                            <button class="tree-action-btn danger" @click="deleteStavka(kategorija, stavka)" title="Obrisi">
+                                            <button class="tree-action-btn danger" @click="deleteStavka(kategorija, stavka)" title="Obriši">
                                                 <i class="ti ti-trash"></i>
                                             </button>
                                         </div>
@@ -218,7 +213,7 @@
                             <span class="summary-value expense" x-text="formatCurrency(ukupniRashodi)"></span>
                         </div>
                         <div class="summary-row highlight">
-                            <span class="summary-label">Ostaje za zivot</span>
+                            <span class="summary-label">Ostaje za život</span>
                             <span class="summary-value balance" :class="ostajeZaZivot >= 0 ? 'income' : 'expense'" x-text="formatCurrency(ostajeZaZivot)"></span>
                         </div>
                     </div>
@@ -253,7 +248,7 @@
                     <div class="panel-header">
                         <div class="panel-title">
                             <i class="ti ti-calendar-off"></i>
-                            <span>Oslobadjanje</span>
+                            <span>Oslobođanje</span>
                         </div>
                     </div>
                     <div class="expiring-list">
@@ -319,14 +314,14 @@
                                     <input type="text" class="form-input" x-model="itemForm.napomena" placeholder="Opciono">
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Datum zavrsetka</label>
+                                    <label class="form-label">Datum završetka</label>
                                     <input type="month" class="form-input" x-model="itemForm.endDate">
-                                    <div class="form-hint">Kada prestaje ovaj trosak (npr. rata kredita)</div>
+                                    <div class="form-hint">Kada prestaje ovaj trošak (npr. rata kredita)</div>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Kraj ugovora</label>
                                     <input type="month" class="form-input" x-model="itemForm.contractEndDate">
-                                    <div class="form-hint">Kada istice ugovor - upozorenje 1 mesec ranije</div>
+                                    <div class="form-hint">Kada ističe ugovor - upozorenje 1 mesec ranije</div>
                                 </div>
                                 <div class="form-group" x-show="editingItem">
                                     <label class="form-label">Kategorija (<span x-text="itemForm.kategorijaKey" style="color:#f59e0b"></span>)</label>
@@ -338,8 +333,8 @@
                                 </div>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary flex-1" @click="closeItemModal()">Otkazi</button>
-                                <button type="submit" class="btn btn-primary flex-1">Sacuvaj</button>
+                                <button type="button" class="btn btn-secondary flex-1" @click="closeItemModal()">Otkaži</button>
+                                <button type="submit" class="btn btn-primary flex-1">Sačuvaj</button>
                             </div>
                         </form>
                     </div>
